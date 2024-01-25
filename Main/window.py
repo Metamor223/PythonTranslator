@@ -1,40 +1,55 @@
-from PIL import ImageGrab, Image, ImageTk
 import tkinter as tk
+import mss
+from PIL import Image
+import pygetwindow as gw
+import pygetpixel as gp
 
-from Main.ReadingText import ReadingText
+from WorkWithText.Translate import TranslateText
+from WorkWithText.ReadingText import ReadingText
 
+def ScreenGrabAndDisplay(last_text=""):
+    # Получаем активное окно
+    window = gw.getActiveWindow()
 
-def screenGrabAndDisplay():
-    screenGrab = ImageGrab.grab()
-    screenGrab.save('Images/screenGrab.png')
+    if window:
+        # Читаем текст из активного окна
+        text = ReadingText(window)
 
-    new_size = (300, 200)
+        # Переводим текст с английского на русский
+        translated_text = TranslateText(text)
 
-    # Открываем сохраненное изображение
-    original_image = Image.open('Images/screenGrab.png')
+        # Форматируем текст
+        formatted_text = f"Text: {text}\nTranslation: {translated_text}"
 
-    # Изменяем размер изображения
-    resized_image = original_image.resize(new_size, Image.ADAPTIVE)
+    # Проверяем, добавлялся ли уже такой текст
+    if formatted_text != last_text:
+        # Очищаем содержимое виджета Text
+        text_widget.delete("1.0", tk.END)
 
-    # Конвертируем изображение для Tkinter
-    tk_image = ImageTk.PhotoImage(resized_image)
+        # Добавляем новый текст
+        text_widget.insert(tk.END, formatted_text)
 
-    # Обновляем изображение в виджете Label
-    img_label.config(image=tk_image)
-    img_label.image = tk_image  # Сохраняем ссылку на изображение, чтобы избежать сборщика мусора
-
+    # Запускаем функцию повторно через 5000 миллисекунд (5 секунд) с новым last_text
+    root.after(5000, ScreenGrabAndDisplay, formatted_text)
 
 root = tk.Tk()
 root.title("Desktop Window")
 
-img_label = tk.Label(root)  # Виджет Label для отображения изображения
-img_label.pack()
+# Создаем виджет Text для отображения текста с возможностью скролла
+text_widget = tk.Text(root, font=("Arial", 9), wrap=tk.WORD, width=80, height=30, padx=30, pady=30)
+text_widget.pack()
 
-text_label = ReadingText()
-update_button = tk.Button(root, text="Update", command=screenGrabAndDisplay)  # Кнопка для обновления изображения
-update_button.pack()
+# Создаем вертикальный скроллбар и привязываем его к виджету Text
+scrollbar = tk.Scrollbar(root, command=text_widget.yview)
+scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+text_widget.config(yscrollcommand=scrollbar.set)
 
-close_button = tk.Button(root, text="Close", command=root.destroy)  # Кнопка для закрытия окна
+# Начинаем процесс автоматического обновления
+ScreenGrabAndDisplay()
+
+# Создаем кнопку для закрытия окна
+close_button = tk.Button(root, text="Close", command=root.destroy)
 close_button.pack()
 
+# Запускаем главный цикл tkinter
 root.mainloop()
